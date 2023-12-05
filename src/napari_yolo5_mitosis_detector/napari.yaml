@@ -18,18 +18,21 @@ contributions:
     - id: napari-yolo5-mitosis-detector.make_sample_data
       python_name: napari_yolo5_mitosis_detector._sample_data:make_sample_data
       title: Load sample data from Yolo5 Mitosis Detector
-    - id: napari-yolo5-mitosis-detector.make_container_widget
-      python_name: napari_yolo5_mitosis_detector:ImageThreshold
-      title: Make threshold Container widget
-    - id: napari-yolo5-mitosis-detector.make_magic_widget
-      python_name: napari_yolo5_mitosis_detector:threshold_magic_widget
-      title: Make threshold magic widget
-    - id: napari-yolo5-mitosis-detector.make_function_widget
-      python_name: napari_yolo5_mitosis_detector:threshold_autogenerate_widget
-      title: Make threshold function widget
-    - id: napari-yolo5-mitosis-detector.make_qwidget
-      python_name: napari_yolo5_mitosis_detector:ExampleQWidget
-      title: Make example QWidget
+    # - id: napari-yolo5-mitosis-detector.make_container_widget
+    #   python_name: napari_yolo5_mitosis_detector:ImageThreshold
+    #   title: Make threshold Container widget
+    # - id: napari-yolo5-mitosis-detector.make_magic_widget
+    #   python_name: napari_yolo5_mitosis_detector:threshold_magic_widget
+    #   title: Make threshold magic widget
+    # - id: napari-yolo5-mitosis-detector.make_function_widget
+    #   python_name: napari_yolo5_mitosis_detector:threshold_autogenerate_widget
+    #   title: Make threshold function widget
+    # - id: napari-yolo5-mitosis-detector.make_qwidget
+    #   python_name: napari_yolo5_mitosis_detector:ExampleQWidget
+    #   title: Make example QWidget
+    - id: napari-yolo5-mitosis-detector.yolo5_bbox_mitosis_widget
+      python_name: napari_yolo5_mitosis_detector:yolo5_bbox_mitosis_widget
+      title: Make bbox using yolo5 on 2d image widget
   readers:
     - command: napari-yolo5-mitosis-detector.get_reader
       accepts_directories: false
@@ -46,12 +49,15 @@ contributions:
       display_name: Yolo5 Mitosis Detector
       key: unique_id.1
   widgets:
-    - command: napari-yolo5-mitosis-detector.make_container_widget
-      display_name: Container Threshold
-    - command: napari-yolo5-mitosis-detector.make_magic_widget
-      display_name: Magic Threshold
-    - command: napari-yolo5-mitosis-detector.make_function_widget
+    # - command: napari-yolo5-mitosis-detector.make_container_widget
+    #   display_name: Container Threshold
+    # - command: napari-yolo5-mitosis-detector.make_magic_widget
+    #   display_name: Magic Threshold
+    # - command: napari-yolo5-mitosis-detector.make_function_widget
+    #   autogenerate: true
+    #   display_name: Autogenerate Threshold
+    # - command: napari-yolo5-mitosis-detector.make_qwidget
+    #   display_name: Example QWidget
+    - command: napari-yolo5-mitosis-detector.yolo5_bbox_mitosis_widget
       autogenerate: true
-      display_name: Autogenerate Threshold
-    - command: napari-yolo5-mitosis-detector.make_qwidget
-      display_name: Example QWidget
+      display_name: Yolo5 Mito BBox
