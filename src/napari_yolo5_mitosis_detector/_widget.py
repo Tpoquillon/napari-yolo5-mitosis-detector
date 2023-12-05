@@ -34,7 +34,7 @@ from magicgui import magic_factory
 from magicgui.widgets import CheckBox, Container, create_widget
 from qtpy.QtWidgets import QHBoxLayout, QPushButton, QWidget
 from skimage.util import img_as_float
-from .core import xy_to_rectangle
+from .core import yolo5_bbox_mitosis
 if TYPE_CHECKING:
     import napari
 
@@ -130,4 +130,4 @@ class ExampleQWidget(QWidget):
 def yolo5_bbox_mitosis_widget(
     img: "napari.types.ImageData",
 ) -> "napari.layers.Shapes":
-    return xy_to_rectangle(img)
+    return yolo5_bbox_mitosis(img)

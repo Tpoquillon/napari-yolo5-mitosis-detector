@@ -25,7 +25,7 @@ def im_preproc(im):
     q01 = np.quantile(im, 0.001)
     return (((im-q01)/(q99-q01)).clip(0,1)*255).astype(np.uint8)
 
-def zxy_to_pandas(im):
+def zyx_to_pandas(im):
     model_loaded()
 
     batch_size=8
@@ -39,16 +39,43 @@ def zxy_to_pandas(im):
             el["z"] = i
     df = pd.concat(results_pandas,ignore_index=True)
     return df
-def xy_to_rectangle(im:np.ndarray):
-    assert len(im.shape)==2 , 'img should have 2 dimention'
-    lay =  napari.layers.Shapes(ndim=2)
-    df = zxy_to_pandas(im[None,...])
 
-    rectangle_data_mito = np.array([[[row.ymin,row.xmin],[row.ymax,row.xmax]] for _,row in df.iterrows() if row["class"]==0])
+
+def row_to_rect(row:pd.Series, ndim:int):
+    if ndim == 2:
+        return [[row.ymin,row.xmin],[row.ymin,row.xmax],[row.ymax,row.xmax],[row.ymax,row.xmin]]
+    elif ndim ==3:
+        return [[row.z,row.ymin,row.xmin],[row.z,row.ymin,row.xmax],[row.z,row.ymax,row.xmax],[row.z,row.ymax,row.xmin]]
+    else:
+        raise Exception("ndim must be 2 or 3, not %d"%ndim)
+
+def pandas_to_layer(df:pd.DataFrame,ndim=2):
+    lay =  napari.layers.Shapes(ndim=ndim)
+    rectangle_data_mito = np.array([row_to_rect(row,ndim) for _,row in df.iterrows() if row["class"]==0])
+    rectangle_data_nuc = np.array([row_to_rect(row,ndim)for _,row in df.iterrows() if row["class"]==1])
     if len(rectangle_data_mito>0 ):
-        lay.add_rectangles((rectangle_data_mito),edge_width=4, edge_color="green", face_color="#ffffff32", z_index=2)
-    
-    rectangle_data_nuc = np.array([[[row.ymin,row.xmin],[row.ymax,row.xmax]] for _,row in df.iterrows() if row["class"]==1])
+        lay.add_rectangles((rectangle_data_mito),edge_width=4, edge_color="green", face_color="#ffffff32", z_index=2)    
     if len(rectangle_data_nuc>0 ):
         lay.add_rectangles((rectangle_data_nuc),edge_width=2, edge_color="red", face_color="#ffffff32", z_index=1)
+        return lay
+    
+    
+def yx_to_rectangle(im:np.ndarray):
+    assert len(im.shape)==2 , 'img should have 2 dimention'
+    df = zyx_to_pandas(im[None,...])
+    lay =  pandas_to_layer(df,2)
     return lay
+
+def zyx_to_rectangle(im:np.ndarray):
+    assert len(im.shape)==3 , 'img should have 3 dimention'
+    df = zyx_to_pandas(im)
+    lay =  pandas_to_layer(df,3)
+    return lay
+
+def yolo5_bbox_mitosis(img:np.ndarray):
+    if len(img.shape)==2:
+        return yx_to_rectangle(img)
+    elif len(img.shape)==3:
+        return zyx_to_rectangle(img)
+    else:
+        return None
