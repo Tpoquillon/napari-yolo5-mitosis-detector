@@ -3,35 +3,36 @@ import pandas as pd
 from pathlib import Path
 import napari
 import threading
-model = None
+from .post_process import row_to_rect,zyx_pandas_post_process
+_model = None
 
-def load_model():
+def _load_model():
     import torch
     from torch.hub import load
-    global model
-    model = load('ultralytics/yolov5', 'custom', path=Path(r"D:\Data\Models\Yolo5\mito-nuclei-detection") / "weights" / "best.pt",force_reload=False)
+    global _model
+    _model = load('ultralytics/yolov5', 'custom', path=Path(r"D:\Data\Models\Yolo5\mito-nuclei-detection") / "weights" / "best.pt",force_reload=False)
     if torch.cuda.is_available():
-        model = model.to(torch.device("cuda"))
-loader = threading.Thread(target=load_model)
+        _model = _model.to(torch.device("cuda"))
+loader = threading.Thread(target=_load_model)
 loader.start()
 
-def model_loaded():
-    if model is None:
+def _model_loaded():
+    if _model is None:
         loader.join()
 
 
-def im_preproc(im):
+def _im_qnorm(im):
     q99 = np.quantile(im,0.999)
     q01 = np.quantile(im, 0.001)
     return (((im-q01)/(q99-q01)).clip(0,1)*255).astype(np.uint8)
 
-def zyx_to_pandas(im):
-    model_loaded()
+def _zyx_to_pandas(im):
+    _model_loaded()
 
     batch_size=8
-    im = im_preproc(im)
+    im = _im_qnorm(im)
     batches = [im[i:i+batch_size] for i in range(0,len(im),batch_size)]
-    results_batch = sum([[model([el for el in imb] )] for imb in batches],[])
+    results_batch = sum([[_model([el for el in imb] )] for imb in batches],[])
     results_pandas = sum([el.pandas().xyxy for el in results_batch],[])
 
     for i, el in enumerate(results_pandas):
@@ -41,15 +42,9 @@ def zyx_to_pandas(im):
     return df
 
 
-def row_to_rect(row:pd.Series, ndim:int):
-    if ndim == 2:
-        return [[row.ymin,row.xmin],[row.ymin,row.xmax],[row.ymax,row.xmax],[row.ymax,row.xmin]]
-    elif ndim ==3:
-        return [[row.z,row.ymin,row.xmin],[row.z,row.ymin,row.xmax],[row.z,row.ymax,row.xmax],[row.z,row.ymax,row.xmin]]
-    else:
-        raise Exception("ndim must be 2 or 3, not %d"%ndim)
 
-def pandas_to_layer(df:pd.DataFrame,ndim=2):
+
+def _pandas_to_layer(df:pd.DataFrame,ndim=2):
     lay =  napari.layers.Shapes(ndim=ndim)
     rectangle_data_mito = np.array([row_to_rect(row,ndim) for _,row in df.iterrows() if row["class"]==0])
     rectangle_data_nuc = np.array([row_to_rect(row,ndim)for _,row in df.iterrows() if row["class"]==1])
@@ -60,22 +55,23 @@ def pandas_to_layer(df:pd.DataFrame,ndim=2):
         return lay
     
     
-def yx_to_rectangle(im:np.ndarray):
+def _yx_to_rectangle(im:np.ndarray):
     assert len(im.shape)==2 , 'img should have 2 dimention'
-    df = zyx_to_pandas(im[None,...])
-    lay =  pandas_to_layer(df,2)
+    df = _zyx_to_pandas(im[None,...])
+    lay =  _pandas_to_layer(df,2)
     return lay
 
-def zyx_to_rectangle(im:np.ndarray):
+def _zyx_to_rectangle(im:np.ndarray):
     assert len(im.shape)==3 , 'img should have 3 dimention'
-    df = zyx_to_pandas(im)
-    lay =  pandas_to_layer(df,3)
+    df = _zyx_to_pandas(im)
+    df = zyx_pandas_post_process(df,threshold_overlap=0.5)
+    lay =  _pandas_to_layer(df,3)
     return lay
 
 def yolo5_bbox_mitosis(img:np.ndarray):
     if len(img.shape)==2:
-        return yx_to_rectangle(img)
+        return _yx_to_rectangle(img)
     elif len(img.shape)==3:
-        return zyx_to_rectangle(img)
+        return _zyx_to_rectangle(img)
     else:
         return None

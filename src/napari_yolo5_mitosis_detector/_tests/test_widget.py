@@ -77,7 +77,7 @@ def test_empty_yolo5_bbox_2d_mitosis_widget():
 def test_empty_yolo5_bbox_3d_mitosis_widget():
     # because our "widget" is a pure function, we can call it and
     # test it independently of napari
-    im_data = np.random.random((20, 100, 100))
+    im_data = np.random.random((20, 40, 40))
     empty_bbox_layer = yolo5_bbox_mitosis_widget(im_data)
     assert empty_bbox_layer.ndim == 3
 
