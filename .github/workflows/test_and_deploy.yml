@@ -22,6 +22,7 @@ jobs:
     runs-on: ${{ matrix.platform }}
     strategy:
       matrix:
+
         platform: [windows-latest]
         python-version: ['3.11']
 
