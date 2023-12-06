@@ -3,6 +3,7 @@ import pandas as pd
 from pathlib import Path
 import napari
 import threading
+import importlib_resources
 from .post_process import row_to_rect,zyx_pandas_post_process
 _model = None
 
@@ -10,7 +11,7 @@ def _load_model():
     import torch
     from torch.hub import load
     global _model
-    _model = load('ultralytics/yolov5', 'custom', path=Path(r"D:\Data\Models\Yolo5\mito-nuclei-detection") / "weights" / "best.pt",force_reload=False)
+    _model = load('ultralytics/yolov5', 'custom', path=importlib_resources.files("napari_yolo5_mitosis_detector") / ".models" / "Yolo5" / "mito-nuclei-detection"/ "weights" / "best.pt",force_reload=False)
     if torch.cuda.is_available():
         _model = _model.to(torch.device("cuda"))
 loader = threading.Thread(target=_load_model)
