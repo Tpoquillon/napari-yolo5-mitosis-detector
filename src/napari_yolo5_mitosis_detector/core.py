@@ -11,6 +11,7 @@ def _load_model():
     import torch
     from torch.hub import load
     global _model
+    assert Path(importlib_resources.files("napari_yolo5_mitosis_detector") / ".models" / "Yolo5" / "mito-nuclei-detection"/ "weights" / "best.pt").exists()
     _model = load('ultralytics/yolov5', 'custom', path=importlib_resources.files("napari_yolo5_mitosis_detector") / ".models" / "Yolo5" / "mito-nuclei-detection"/ "weights" / "best.pt",force_reload=False)
     if torch.cuda.is_available():
         _model = _model.to(torch.device("cuda"))
@@ -20,6 +21,10 @@ loader.start()
 def _model_loaded():
     if _model is None:
         loader.join()
+    if _model is not None:
+        return
+    _load_model()
+
 
 
 def _im_qnorm(im):
