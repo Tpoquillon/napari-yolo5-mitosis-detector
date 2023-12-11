@@ -128,6 +128,6 @@ class ExampleQWidget(QWidget):
         print("napari has", len(self.viewer.layers), "layers")
 
 def yolo5_bbox_mitosis_widget(
-    img: "napari.types.ImageData",
+    img: "napari.layers.Image",
 ) -> "napari.layers.Shapes":
     return yolo5_bbox_mitosis(img)

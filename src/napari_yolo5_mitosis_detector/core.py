@@ -5,6 +5,7 @@ import napari
 import threading
 import importlib_resources
 from .post_process import row_to_rect,zyx_pandas_post_process
+import dask
 _model = None
 
 def _load_model():
@@ -40,11 +41,12 @@ def _zyx_to_pandas(im):
     batches = [im[i:i+batch_size] for i in range(0,len(im),batch_size)]
     results_batch = sum([[_model([el for el in imb] )] for imb in batches],[])
     results_pandas = sum([el.pandas().xyxy for el in results_batch],[])
-
+    result_filtered=[]
     for i, el in enumerate(results_pandas):
         if not el.empty:
             el["z"] = i
-    df = pd.concat(results_pandas,ignore_index=True)
+            result_filtered.append(el)
+    df = pd.concat(result_filtered,ignore_index=True)
     return df
 
 
@@ -74,10 +76,32 @@ def _zyx_to_rectangle(im:np.ndarray):
     lay =  _pandas_to_layer(df,3)
     return lay
 
-def yolo5_bbox_mitosis(img:np.ndarray):
+def _tzyx_to_rectangle(im:np.ndarray):
+    assert len(im.shape)==4 , 'img should have 4 dimention'
+    df = []
+    for t, imt in enumerate(im):
+        dft = _zyx_to_pandas(imt)
+        dft = zyx_pandas_post_process(dft,threshold_overlap=0.5)
+        dft["t"]=t
+        df.append(dft)
+    df = pd.concat(df,axis=0)
+    lay =  _pandas_to_layer(df,4)
+    return lay
+
+def yolo5_bbox_mitosis(img_layer:napari.layers.Image):
+    img = img_layer.data
+    print(type(img))
+    if type(img) == dask.array.core.Array:
+        img = np.asarray(img)
     if len(img.shape)==2:
-        return _yx_to_rectangle(img)
+        detection_shape_layer = _yx_to_rectangle(img)
     elif len(img.shape)==3:
-        return _zyx_to_rectangle(img)
+        detection_shape_layer = _zyx_to_rectangle(img)
+    elif len(img.shape)==4:
+        detection_shape_layer = _tzyx_to_rectangle(img)
     else:
-        return None
+        raise NotImplementedError("%dd image not suported yet"%len(img.shape))
+    detection_shape_layer.scale = img_layer.scale
+    detection_shape_layer.name = img.name+"mitosis-bbox"
+    return detection_shape_layer
+

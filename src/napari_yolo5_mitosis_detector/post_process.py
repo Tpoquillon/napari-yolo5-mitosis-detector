@@ -18,6 +18,8 @@ def row_to_rect(row:pd.Series, ndim:int):
         return [[row.ymin,row.xmin],[row.ymin,row.xmax],[row.ymax,row.xmax],[row.ymax,row.xmin]]
     elif ndim ==3:
         return [[row.z,row.ymin,row.xmin],[row.z,row.ymin,row.xmax],[row.z,row.ymax,row.xmax],[row.z,row.ymax,row.xmin]]
+    elif ndim ==4:
+        return [[row.t, row.z,row.ymin,row.xmin],[row.t, row.z,row.ymin,row.xmax],[row.t, row.z,row.ymax,row.xmax],[row.t, row.z,row.ymax,row.xmin]]
     else:
         raise Exception("ndim must be 2 or 3, not %d"%ndim)
     
@@ -50,14 +52,14 @@ def _add_layer_ids(df:pd.DataFrame):
     df = df.set_index(["z"])
     df["layer_id"] = -1
     for z in range(int(df.index.max()+1)):
-        df.loc[z,"layer_id"] = list(range(len(df.loc[z])))
+        df.loc[z:z,"layer_id"] = list(range(len(df.loc[z:z])))
     return df.set_index("layer_id",append=True)
     
 
 
 def zyx_pandas_post_process(df:pd.DataFrame,**kwargs):
     df = _add_layer_ids(df).sort_index()
-    rectangle_layers = [[ row_to_rect(row,2)  for _,row in df.loc[z ].iterrows()] for z in range(int(df.index.levels[0].max()+1))]
+    rectangle_layers = [[ row_to_rect(row,2)  for _,row in df.loc[z:z].iterrows()] for z in range(int(df.index.levels[0].max()+1))]
     components = _find_overlapping_rectangles(rectangle_layers,**kwargs)
     for c , comp in enumerate(components):
         df.loc[list(comp),"class"] = np.round(np.mean(df.loc[list(comp),"class"])**2)
