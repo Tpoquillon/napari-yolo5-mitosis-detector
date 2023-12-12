@@ -6,8 +6,9 @@ import threading
 import importlib_resources
 from .post_process import row_to_rect,zyx_pandas_post_process
 import dask
+from skimage.transform import resize
+from scipy.spatial.distance import cdist
 _model = None
-
 def _load_model():
     import torch
     from torch.hub import load
@@ -25,8 +26,6 @@ def _model_loaded():
     if _model is not None:
         return
     _load_model()
-
-
 
 def _im_qnorm(im):
     q99 = np.quantile(im,0.999)
@@ -49,9 +48,6 @@ def _zyx_to_pandas(im):
     df = pd.concat(result_filtered,ignore_index=True)
     return df
 
-
-
-
 def _pandas_to_layer(df:pd.DataFrame,ndim=2):
     lay =  napari.layers.Shapes(ndim=ndim)
     rectangle_data_mito = np.array([row_to_rect(row,ndim) for _,row in df.iterrows() if row["class"]==0])
@@ -60,9 +56,19 @@ def _pandas_to_layer(df:pd.DataFrame,ndim=2):
         lay.add_rectangles((rectangle_data_mito),edge_width=4, edge_color="green", face_color="#ffffff32", z_index=2)    
     if len(rectangle_data_nuc>0 ):
         lay.add_rectangles((rectangle_data_nuc),edge_width=2, edge_color="red", face_color="#ffffff32", z_index=1)
-        return lay
-    
-    
+    return lay
+
+def _add_centroids(df:pd.DataFrame):
+    df.loc[:,"x"] = (df["xmin"]+(df["xmax"]-df["xmin"])/2).copy().astype(int)
+    df.loc[:,"y"] = (df["ymin"]+(df["ymax"]-df["ymin"])/2).copy().astype(int)
+    return df
+
+def _nearest_neigbour(df:pd.DataFrame):
+    dist = cdist(df[["x","y"]].values,df[["x","y"]].values)
+    dist[dist==0]=999
+    df["nn"]  = np.min(dist,axis = 0)
+    return df["nn"]
+      
 def _yx_to_rectangle(im:np.ndarray):
     assert len(im.shape)==2 , 'img should have 2 dimention'
     df = _zyx_to_pandas(im[None,...])
@@ -88,37 +94,70 @@ def _tzyx_to_rectangle(im:np.ndarray):
     lay =  _pandas_to_layer(df,4)
     return lay
 
-def yolo5_bbox_mitosis(img_layer:napari.layers.Image):
+def _tzyx_monolayer_resized_to_rectangle(im:np.ndarray):
+    yx_scale_factors = im.shape[-2]/512, im.shape[-1]/512
+    im_flat = resize(im,(im.shape[0],1,512,512),order=1)
+    df = _zyx_to_pandas(im_flat[:,0,...])
+    df["t"] = df["z"]
+    df["z"] = 0
+    df["xmax"],df["xmin"] = (df["xmax"]*yx_scale_factors[1]).astype(int),(df["xmin"]*yx_scale_factors[1]).astype(int)
+    df["ymax"],df["ymin"] = (df["ymax"]*yx_scale_factors[0]).astype(int),(df["ymin"]*yx_scale_factors[0]).astype(int)
+    df_mito = df[df["class"]==0]
+    df_mito = _add_centroids(df_mito)
+    df_mito["nn"] = df_mito.groupby("t").apply(_nearest_neigbour).values
+    small = df_mito[df_mito["nn"]<(50*max(*yx_scale_factors))].copy()
+    return _pandas_to_layer(small,4)
+
+
+def yolo5_bbox_mitosis(img_layer:napari.layers.Image, monolayer=False):
     img = img_layer.data
+    scale = np.asarray(img_layer.scale).copy()
+    translate = np.asarray(img_layer.translate).copy()
+    
     if type(img) == dask.array.core.Array:
         img = np.asarray(img)
+    shape = img.shape
     if len(img.shape)==2:
         detection_shape_layer = _yx_to_rectangle(img)
-    elif len(img.shape)==3:
+    elif len(shape)==3:
         detection_shape_layer = _zyx_to_rectangle(img)
-    elif len(img.shape)==4:
+    elif len(shape)==4 and not monolayer:
         detection_shape_layer = _tzyx_to_rectangle(img)
+    elif len(shape)==4 and monolayer:
+        detection_shape_layer = _tzyx_monolayer_resized_to_rectangle(img)
+        scale[1] *= shape[1]    
+        translate[1] += scale[1]/2
     else:
         raise NotImplementedError("%dd image not suported yet"%len(img.shape))
-    detection_shape_layer.scale = img_layer.scale
+    detection_shape_layer.scale = scale
+    detection_shape_layer.translate = translate
     detection_shape_layer.name = img_layer.name+"_mitosis-bbox"
     return detection_shape_layer
 
 def max_intensity_projection(img_layer:napari.layers.Image):
     img = img_layer.data
-    scale = img_layer.scale
+    scale = np.asarray(img_layer.scale).copy()
     shape = img.shape
+    translate = np.asarray(img_layer.translate).copy()
     if type(img) == dask.array.core.Array:
         img = np.asarray(img)
     if len(shape)==3:#zyx
         proj_np = img.max(axis=0)[None,...]
-    elif len(img.shape)==4:#tzxy
+    elif len(shape)==4:#tzxy
         proj_np = proj_np = img.max(axis=1)[:,None,...]
     else:
         raise NotImplementedError("%dd image not suported yet"%len(img.shape))
+    scale[-3] *= shape[-3]    
+    translate[-3] += scale[-3]/2
     projection = napari.layers.Image(proj_np)
     projection.scale = scale
+    projection.translate = translate
     projection.name = img_layer.name+"_zprojection"
 
     return projection
+
+
+
+
+
 

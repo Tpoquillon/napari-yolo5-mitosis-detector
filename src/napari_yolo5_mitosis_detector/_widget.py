@@ -143,22 +143,27 @@ class MitosisYolov5Widget(QWidget):
     def __init__(self, viewer: "napari.viewer.Viewer"):
         super().__init__()
         self.viewer = viewer
+        self.setLayout(QVBoxLayout())
 
         btn_maxproj = QPushButton("Max Projection")
         btn_maxproj.clicked.connect(self._on_click_maxproj)
+        self.layout().addWidget(btn_maxproj)
 
         btn_mitose = QPushButton("Mitosis Detection")
         btn_mitose.clicked.connect(self._on_click_mitose)
-
-        self.setLayout(QVBoxLayout())
-        self.layout().addWidget(btn_maxproj)
         self.layout().addWidget(btn_mitose)
-
+        
+        btn_mitose2 = QPushButton("Mitosis Monolayer Detection")
+        btn_mitose2.clicked.connect(self._on_click_mitose2)
+        self.layout().addWidget(btn_mitose2)  
+        
+    def _selection_io_wraper(self,func,*args,**kwargs):
+        imput = list(self.viewer.layers.selection)[0]
+        output = func(imput,*args,**kwargs)
+        self.viewer.add_layer(output)
     def _on_click_maxproj(self):
-        imput = list(self.viewer.layers.selection)[0]
-        output = max_intensity_projection(imput)
-        self.viewer.add_layer(output)
+        self._selection_io_wraper(max_intensity_projection)
     def _on_click_mitose(self):
-        imput = list(self.viewer.layers.selection)[0]
-        output = yolo5_bbox_mitosis(imput)
-        self.viewer.add_layer(output)
+        self._selection_io_wraper(yolo5_bbox_mitosis)
+    def _on_click_mitose2(self):
+        self._selection_io_wraper(yolo5_bbox_mitosis,monolayer=True)
