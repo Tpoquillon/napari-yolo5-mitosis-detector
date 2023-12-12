@@ -34,7 +34,7 @@ from magicgui import magic_factory
 from magicgui.widgets import CheckBox, Container, create_widget
 from qtpy.QtWidgets import QHBoxLayout, QPushButton, QWidget
 from skimage.util import img_as_float
-from .core import yolo5_bbox_mitosis
+from .core import yolo5_bbox_mitosis, max_intensity_projection
 if TYPE_CHECKING:
     import napari
 
@@ -131,3 +131,8 @@ def yolo5_bbox_mitosis_widget(
     img: "napari.layers.Image",
 ) -> "napari.layers.Shapes":
     return yolo5_bbox_mitosis(img)
+
+def max_projection_widget(
+    img: "napari.layers.Image",
+) -> "napari.layers.Image":
+    return max_intensity_projection(img)

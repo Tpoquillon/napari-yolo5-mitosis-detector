@@ -90,7 +90,6 @@ def _tzyx_to_rectangle(im:np.ndarray):
 
 def yolo5_bbox_mitosis(img_layer:napari.layers.Image):
     img = img_layer.data
-    print(type(img))
     if type(img) == dask.array.core.Array:
         img = np.asarray(img)
     if len(img.shape)==2:
@@ -102,6 +101,24 @@ def yolo5_bbox_mitosis(img_layer:napari.layers.Image):
     else:
         raise NotImplementedError("%dd image not suported yet"%len(img.shape))
     detection_shape_layer.scale = img_layer.scale
-    detection_shape_layer.name = img.name+"mitosis-bbox"
+    detection_shape_layer.name = img_layer.name+"_mitosis-bbox"
     return detection_shape_layer
+
+def max_intensity_projection(img_layer:napari.layers.Image):
+    img = img_layer.data
+    scale = img_layer.scale
+    shape = img.shape
+    if type(img) == dask.array.core.Array:
+        img = np.asarray(img)
+    if len(shape)==3:#zyx
+        proj_np = img.max(axis=0)[None,...]
+    elif len(img.shape)==4:#tzxy
+        proj_np = proj_np = img.max(axis=1)[:,None,...]
+    else:
+        raise NotImplementedError("%dd image not suported yet"%len(img.shape))
+    projection = napari.layers.Image(proj_np)
+    projection.scale = scale
+    projection.name = img_layer.name+"_zprojection"
+
+    return projection
 
