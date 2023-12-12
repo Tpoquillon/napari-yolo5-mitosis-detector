@@ -5,7 +5,8 @@ from napari_yolo5_mitosis_detector._widget import (
     ImageThreshold,
     threshold_autogenerate_widget,
     threshold_magic_widget,
-    yolo5_bbox_mitosis_widget
+    yolo5_bbox_mitosis_widget,
+    max_projection_widget
 )
 
 
@@ -85,3 +86,21 @@ def test_empty_yolo5_bbox_4d_mitosis_widget():
     im_data =  napari.layers.Image(np.random.random((5,5, 20, 20)))
     empty_bbox_layer = yolo5_bbox_mitosis_widget(im_data)
     assert empty_bbox_layer.ndim == 4
+
+
+def test_maxproj_widget():
+    # because our "widget" is a pure function, we can call it and
+    # test it independently of napari
+    im_data =  napari.layers.Image(np.random.random((5, 40, 40)))
+    proj_layer = max_projection_widget(im_data)
+    assert proj_layer.ndim == 3
+    assert proj_layer.data.shape[0]==1
+
+def test_maxproj_4d_mitosis_widget():
+    im_data =  napari.layers.Image(np.random.random((5,5, 20, 20)))
+    proj_layer = max_projection_widget(im_data)
+    assert proj_layer.ndim == 4
+    assert proj_layer.data.shape[1]==1
+
+test_maxproj_widget()
+test_maxproj_4d_mitosis_widget()
