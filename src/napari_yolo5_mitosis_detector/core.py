@@ -4,7 +4,7 @@ from pathlib import Path
 import napari
 import threading
 import importlib_resources
-from .post_process import row_to_rect,zyx_pandas_post_process
+from .post_process import row_to_rect,zyx_pandas_post_process, tyx_pandas_post_process
 import dask
 from skimage.transform import resize
 from scipy.spatial.distance import cdist
@@ -65,7 +65,7 @@ def _add_centroids(df:pd.DataFrame):
 
 def _nearest_neigbour(df:pd.DataFrame):
     dist = cdist(df[["x","y"]].values,df[["x","y"]].values)
-    dist[dist==0]=999
+    dist[dist==0]=99999.
     df["nn"]  = np.min(dist,axis = 0)
     return df["nn"]
       
@@ -105,8 +105,14 @@ def _tzyx_monolayer_resized_to_rectangle(im:np.ndarray):
     df_mito = df[df["class"]==0]
     df_mito = _add_centroids(df_mito)
     df_mito["nn"] = df_mito.groupby("t").apply(_nearest_neigbour).values
-    small = df_mito[df_mito["nn"]<(50*max(*yx_scale_factors))].copy()
-    return _pandas_to_layer(small,4)
+    df["nn"] = 99999.
+    df.loc[df["class"]==0,"nn"] = df_mito["nn"]
+    df["class-tmp"] = df["class"].copy()
+    df["class"] = 1
+    df.loc[df["nn"]<(50*max(*yx_scale_factors)),"class"] = 0
+    df = tyx_pandas_post_process(df,threshold_overlap=0.3)
+    df["class"] = df[["class","class-tmp"]].min(axis=1)   
+    return _pandas_to_layer(df,4)
 
 
 def yolo5_bbox_mitosis(img_layer:napari.layers.Image, monolayer=False):

@@ -101,3 +101,5 @@ def test_maxproj_4d_mitosis_widget():
     proj_layer = max_projection_widget(im_data)
     assert proj_layer.ndim == 4
     assert proj_layer.data.shape[1]==1
+
+test_empty_yolo5_bbox_3d_mitosis_widget()
