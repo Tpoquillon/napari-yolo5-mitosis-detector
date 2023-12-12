@@ -36,6 +36,9 @@ contributions:
     - id: napari-yolo5-mitosis-detector.max_projection_widget
       python_name: napari_yolo5_mitosis_detector:max_projection_widget
       title: Make a max projection on a 3d ,4d  image 
+    - id: napari-yolo5-mitosis-detector.make_yolov5_qwidget
+      python_name: napari_yolo5_mitosis_detector:MitosisYolov5Widget
+      title: Make example QWidget
   readers:
     - command: napari-yolo5-mitosis-detector.get_reader
       accepts_directories: false
@@ -67,3 +70,5 @@ contributions:
     - command: napari-yolo5-mitosis-detector.max_projection_widget
       autogenerate: true
       display_name: Max Projection
+    - command: napari-yolo5-mitosis-detector.make_yolov5_qwidget
+      display_name: Main Widget

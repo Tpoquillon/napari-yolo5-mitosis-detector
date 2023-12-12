@@ -32,7 +32,7 @@ from typing import TYPE_CHECKING
 
 from magicgui import magic_factory
 from magicgui.widgets import CheckBox, Container, create_widget
-from qtpy.QtWidgets import QHBoxLayout, QPushButton, QWidget
+from qtpy.QtWidgets import QHBoxLayout,QVBoxLayout, QPushButton, QWidget
 from skimage.util import img_as_float
 from .core import yolo5_bbox_mitosis, max_intensity_projection
 if TYPE_CHECKING:
@@ -136,3 +136,29 @@ def max_projection_widget(
     img: "napari.layers.Image",
 ) -> "napari.layers.Image":
     return max_intensity_projection(img)
+
+class MitosisYolov5Widget(QWidget):
+    # your QWidget.__init__ can optionally request the napari viewer instance
+    # use a type annotation of 'napari.viewer.Viewer' for any parameter
+    def __init__(self, viewer: "napari.viewer.Viewer"):
+        super().__init__()
+        self.viewer = viewer
+
+        btn_maxproj = QPushButton("Max Projection")
+        btn_maxproj.clicked.connect(self._on_click_maxproj)
+
+        btn_mitose = QPushButton("Mitosis Detection")
+        btn_mitose.clicked.connect(self._on_click_mitose)
+
+        self.setLayout(QVBoxLayout())
+        self.layout().addWidget(btn_maxproj)
+        self.layout().addWidget(btn_mitose)
+
+    def _on_click_maxproj(self):
+        imput = list(self.viewer.layers.selection)[0]
+        output = max_intensity_projection(imput)
+        self.viewer.add_layer(output)
+    def _on_click_mitose(self):
+        imput = list(self.viewer.layers.selection)[0]
+        output = yolo5_bbox_mitosis(imput)
+        self.viewer.add_layer(output)
