@@ -49,14 +49,14 @@ def _zyx_to_pandas(im):
     return df
 
 def _pandas_to_layer(df:pd.DataFrame,ndim=2):
-    lay =  napari.layers.Shapes(ndim=ndim)
+    lay1, lay2 =  napari.layers.Shapes(ndim=ndim), napari.layers.Shapes(ndim=ndim)
     rectangle_data_mito = np.array([row_to_rect(row,ndim) for _,row in df.iterrows() if row["class"]==0])
     rectangle_data_nuc = np.array([row_to_rect(row,ndim)for _,row in df.iterrows() if row["class"]==1])
     if len(rectangle_data_mito>0 ):
-        lay.add_rectangles((rectangle_data_mito),edge_width=4, edge_color="green", face_color="#ffffff32", z_index=2)    
+        lay1.add_rectangles((rectangle_data_mito),edge_width=4, edge_color="green", face_color="#ffffff32", z_index=2)    
     if len(rectangle_data_nuc>0 ):
-        lay.add_rectangles((rectangle_data_nuc),edge_width=2, edge_color="red", face_color="#ffffff32", z_index=1)
-    return lay
+        lay2.add_rectangles((rectangle_data_nuc),edge_width=2, edge_color="red", face_color="#ffffff32", z_index=1)
+    return lay1,lay2
 
 def _add_centroids(df:pd.DataFrame):
     df.loc[:,"x"] = (df["xmin"]+(df["xmax"]-df["xmin"])/2).copy().astype(int)
@@ -124,21 +124,22 @@ def yolo5_bbox_mitosis(img_layer:napari.layers.Image, monolayer=False):
         img = np.asarray(img)
     shape = img.shape
     if len(img.shape)==2:
-        detection_shape_layer = _yx_to_rectangle(img)
+        detection_shape_layers = _yx_to_rectangle(img)
     elif len(shape)==3:
-        detection_shape_layer = _zyx_to_rectangle(img)
+        detection_shape_layers = _zyx_to_rectangle(img)
     elif len(shape)==4 and not monolayer:
-        detection_shape_layer = _tzyx_to_rectangle(img)
+        detection_shape_layers = _tzyx_to_rectangle(img)
     elif len(shape)==4 and monolayer:
-        detection_shape_layer = _tzyx_monolayer_resized_to_rectangle(img)
+        detection_shape_layers = _tzyx_monolayer_resized_to_rectangle(img)
         scale[1] *= shape[1]    
         translate[1] += scale[1]/2
     else:
         raise NotImplementedError("%dd image not suported yet"%len(img.shape))
-    detection_shape_layer.scale = scale
-    detection_shape_layer.translate = translate
-    detection_shape_layer.name = img_layer.name+"_mitosis-bbox"
-    return detection_shape_layer
+    for i, lay in enumerate(detection_shape_layers):
+        lay.scale = scale
+        lay.translate = translate
+        lay.name = img_layer.name+("_mitosis-bbox" if i==0 else "nuc-bbox")
+    return detection_shape_layers
 
 def max_intensity_projection(img_layer:napari.layers.Image):
     img = img_layer.data

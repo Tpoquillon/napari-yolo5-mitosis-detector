@@ -130,7 +130,7 @@ class ExampleQWidget(QWidget):
 def yolo5_bbox_mitosis_widget(
     img: "napari.layers.Image",
 ) -> "napari.layers.Shapes":
-    return yolo5_bbox_mitosis(img)
+    return yolo5_bbox_mitosis(img)[0]
 
 def max_projection_widget(
     img: "napari.layers.Image",
@@ -160,7 +160,11 @@ class MitosisYolov5Widget(QWidget):
     def _selection_io_wraper(self,func,*args,**kwargs):
         imput = list(self.viewer.layers.selection)[0]
         output = func(imput,*args,**kwargs)
-        self.viewer.add_layer(output)
+        if type(output) is tuple:
+            for el in output:
+                self.viewer.add_layer(el)
+        else:
+            self.viewer.add_layer(output)
     def _on_click_maxproj(self):
         self._selection_io_wraper(max_intensity_projection)
     def _on_click_mitose(self):
