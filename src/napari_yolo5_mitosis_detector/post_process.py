@@ -25,7 +25,6 @@ def row_to_rect(row:pd.Series, ndim:int):
 
 def _build_overlapping_graph(rectangle_layers: List[List[np.ndarray]]):
     G = nx.DiGraph()
-    plygon_dict={}
     polygon_layer = [[Polygon(el)for el in layer] for layer in rectangle_layers]
     for l in range(0,len(polygon_layer)-1):
         for i, rect1 in enumerate(polygon_layer[l]):
@@ -33,10 +32,21 @@ def _build_overlapping_graph(rectangle_layers: List[List[np.ndarray]]):
                 d = rect1.distance(rect2)
                 o = _overlap_ratio(rect1,rect2)
                 G.add_edge((l,i), (l+1,j),**{"distance": d,"overlap":o})
-                plygon_dict[(l+1,j)]=rect2
-                if l==0:
-                    plygon_dict[(l,i)]=rect1
     return G    
+
+def _get_large_duplicat(rectangle_layers: List[List[np.ndarray]]):
+    polygon_layer = [[Polygon(el)for el in layer] for layer in rectangle_layers]
+    overlapping =[]
+    for l in range(0,len(polygon_layer)):
+        lay = polygon_layer[l]
+        for i in range(len(lay)):
+            rect1 = lay[i]
+            for j in range(i+1,len(lay)):
+                rect2 = lay[j]
+                if _overlap_ratio(rect1,rect2) >0.8:
+                    overlapping.append((l,i) if rect1.area>rect2.area else (l,j))
+    return overlapping
+
 
 def _filter_overlaping_graph(G:nx.Graph,threshold_overlap:float=-1., threshold_distance:float=-1.):
     G_filtered = nx.subgraph_view(G,filter_edge = lambda X,Y:G[X][Y]["overlap"]>threshold_overlap)
@@ -65,6 +75,8 @@ def _add_layer_ids(df:pd.DataFrame, index_col = "z"):
 def tyx_pandas_post_process(df:pd.DataFrame,**kwargs):
     df = _add_layer_ids(df,"t").sort_index()
     rectangle_layers = [[ row_to_rect(row,2)  for _,row in df.loc[t:t].iterrows()] for t in range(int(df.index.levels[0].max()+1))]
+    
+
     G = _build_overlapping_graph(rectangle_layers)
     G_filtered = _filter_overlaping_graph(G, **kwargs)
     components = list(nx.connected_components(G_filtered.to_undirected()))
@@ -74,6 +86,7 @@ def tyx_pandas_post_process(df:pd.DataFrame,**kwargs):
         subgraph = G_filtered.subgraph(comp)
         nodlist = set(sum([list(nx.ego_graph(subgraph.reverse(),el,4).nodes) for el in list_mito_comp ],[]))
         df.loc[list(nodlist),"class"] = 0
+    df = df.drop( _get_large_duplicat(rectangle_layers))
     return df.reset_index()
 
 
