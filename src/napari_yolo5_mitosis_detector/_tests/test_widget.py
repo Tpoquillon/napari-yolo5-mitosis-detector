@@ -1,5 +1,6 @@
 import numpy as np
 import napari
+from napari_yolo5_mitosis_detector._tests.utility import get_image_sample
 from napari_yolo5_mitosis_detector._widget import (
     ExampleQWidget,
     ImageThreshold,
@@ -71,19 +72,19 @@ def test_example_q_widget(make_napari_viewer, capsys):
 def test_empty_yolo5_bbox_2d_mitosis_widget():
     # because our "widget" is a pure function, we can call it and
     # test it independently of napari
-    im_data = napari.layers.Image(np.random.random((100, 100)))
+    im_data = napari.layers.Image(get_image_sample(ndim = 2))
     empty_bbox_layer = yolo5_bbox_mitosis_widget(im_data)
     assert empty_bbox_layer.ndim == 2
 
 def test_empty_yolo5_bbox_3d_mitosis_widget():
     # because our "widget" is a pure function, we can call it and
     # test it independently of napari
-    im_data =  napari.layers.Image(np.random.random((5, 40, 40)))
+    im_data =  napari.layers.Image(get_image_sample(ndim = 3))
     empty_bbox_layer = yolo5_bbox_mitosis_widget(im_data)
     assert empty_bbox_layer.ndim == 3
 
 def test_empty_yolo5_bbox_4d_mitosis_widget():
-    im_data =  napari.layers.Image(np.random.random((5,5, 20, 20)))
+    im_data =  napari.layers.Image(get_image_sample(ndim = 4))
     empty_bbox_layer = yolo5_bbox_mitosis_widget(im_data)
     assert empty_bbox_layer.ndim == 4
 
@@ -91,15 +92,13 @@ def test_empty_yolo5_bbox_4d_mitosis_widget():
 def test_maxproj_widget():
     # because our "widget" is a pure function, we can call it and
     # test it independently of napari
-    im_data =  napari.layers.Image(np.random.random((5, 40, 40)))
+    im_data =  napari.layers.Image(get_image_sample(ndim = 3))
     proj_layer = max_projection_widget(im_data)
     assert proj_layer.ndim == 3
     assert proj_layer.data.shape[0]==1
 
 def test_maxproj_4d_mitosis_widget():
-    im_data =  napari.layers.Image(np.random.random((5,5, 20, 20)))
+    im_data =  napari.layers.Image(get_image_sample(ndim = 4))
     proj_layer = max_projection_widget(im_data)
     assert proj_layer.ndim == 4
     assert proj_layer.data.shape[1]==1
-
-test_empty_yolo5_bbox_3d_mitosis_widget()
