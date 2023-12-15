@@ -9,6 +9,8 @@
 
 A simple plugin to use yolo5 for mitosis detection with napari
 
+tpoquillon@gmail.com
+
 ----------------------------------
 
 This [napari] plugin was generated with [Cookiecutter] using [@napari]'s [cookiecutter-napari-plugin] template.
