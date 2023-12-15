@@ -30,8 +30,7 @@ jobs:
       - uses: actions/checkout@v3
 
       - name: Unpack lfs objects
-        run: |
-          git lfs init
+        run:
           git lfs pull
 
       - name: Set up Python ${{ matrix.python-version }}
