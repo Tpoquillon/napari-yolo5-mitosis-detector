@@ -45,7 +45,7 @@ def _get_large_duplicat(rectangle_layers: List[List[np.ndarray]]):
                 rect2 = lay[j]
                 if _overlap_ratio(rect1,rect2) >0.8:
                     overlapping.append((l,i) if rect1.area>rect2.area else (l,j))
-    return overlapping
+    return list(set(overlapping))
 
 
 def _filter_overlaping_graph(G:nx.Graph,threshold_overlap:float=-1., threshold_distance:float=-1.):
@@ -72,21 +72,40 @@ def _add_layer_ids(df:pd.DataFrame, index_col = "z"):
     return df.set_index("layer_id",append=True)
     
 
+def _expand_mitosis_detections(df:pd.DataFrame,G_filtered:nx.Graph):
+    components = list(nx.connected_components(G_filtered.to_undirected()))
+    df.loc[:,"tree-id"] = -1
+    for c , comp in enumerate(components):
+        df.loc[list(comp),"tree-id"] = c+1
+        sub = df.loc[list(comp),"class"].sort_index()
+        list_mito_comp = list(sub[sub==0].index)
+        subgraph = G_filtered.subgraph(comp)
+
+        list_mito_comp = [el for el in list_mito_comp if (sub[list(nx.ego_graph(subgraph,el,3,undirected=True).nodes)]==0).sum()>1] #only keeping mitosis next to an other one
+        nodlist = set(sum([list(nx.ego_graph(subgraph.reverse(),el,4).nodes) for el in list_mito_comp ],[]))
+        nodlist = nodlist.union(set(sum([list(nx.ego_graph(subgraph,el,2).nodes) for el in list_mito_comp ],[])))
+        df.loc[list(nodlist),"class"] = 0
+    return df
+
+def _get_mitosis_event_id(df:pd.DataFrame,G_filtered:nx.Graph):
+    df["mito-id"]=-1
+    list_mito = list(df[df["class"]==0].index)
+    subgraph = nx.induced_subgraph(G_filtered,list_mito)
+    components = list(nx.connected_components(subgraph.to_undirected()))
+    for c , comp in enumerate(components):
+        df.loc[list(comp),"mito-id"] = c+1
+    return df
+
 def tyx_pandas_post_process(df:pd.DataFrame,**kwargs):
     df = _add_layer_ids(df,"t").sort_index()
     rectangle_layers = [[ row_to_rect(row,2)  for _,row in df.loc[t:t].iterrows()] for t in range(int(df.index.levels[0].max()+1))]
-    
-
     G = _build_overlapping_graph(rectangle_layers)
+    to_drop = _get_large_duplicat(rectangle_layers)
+    G.remove_nodes_from(to_drop)
+    df = df.drop( to_drop)
     G_filtered = _filter_overlaping_graph(G, **kwargs)
-    components = list(nx.connected_components(G_filtered.to_undirected()))
-    for c , comp in enumerate(components):
-        sub = df.loc[list(comp),"class"]
-        list_mito_comp = list(sub[sub==0].index)
-        subgraph = G_filtered.subgraph(comp)
-        nodlist = set(sum([list(nx.ego_graph(subgraph.reverse(),el,4).nodes) for el in list_mito_comp ],[]))
-        df.loc[list(nodlist),"class"] = 0
-    df = df.drop( _get_large_duplicat(rectangle_layers))
+    df = _expand_mitosis_detections(df, G_filtered)
+    df = _get_mitosis_event_id(df, G_filtered)
     return df.reset_index()
 
 
@@ -95,7 +114,6 @@ def zyx_pandas_post_process(df:pd.DataFrame,**kwargs):
     rectangle_layers = [[ row_to_rect(row,2)  for _,row in df.loc[z:z].iterrows()] for z in range(int(df.index.levels[0].max()+1))]
     components = _find_overlapping_rectangles(rectangle_layers,**kwargs)
     for c , comp in enumerate(components):
-        print(comp)
         df.loc[list(comp),"class"] = np.round(np.mean(df.loc[list(comp),"class"])**2)
     return df.reset_index()
     

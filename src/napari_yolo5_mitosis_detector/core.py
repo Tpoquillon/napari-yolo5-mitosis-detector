@@ -95,23 +95,25 @@ def _tzyx_to_rectangle(im:np.ndarray):
     return lay
 
 def _tzyx_monolayer_resized_to_rectangle(im:np.ndarray):
-    yx_scale_factors = im.shape[-2]/512, im.shape[-1]/512
-    im_flat = resize(im,(im.shape[0],1,512,512),order=1)
+    p_sizes = min(512,im.shape[-2]), min(512,im.shape[-1])
+    yx_scale_factors = im.shape[-2]/p_sizes[-2], im.shape[-1]/p_sizes[-1]
+    im_flat = resize(im,(im.shape[0],1,p_sizes[-2],p_sizes[-1]),order=1)
     df = _zyx_to_pandas(im_flat[:,0,...])
     df["t"] = df["z"]
     df["z"] = 0
     df["xmax"],df["xmin"] = (df["xmax"]*yx_scale_factors[1]).astype(int),(df["xmin"]*yx_scale_factors[1]).astype(int)
     df["ymax"],df["ymin"] = (df["ymax"]*yx_scale_factors[0]).astype(int),(df["ymin"]*yx_scale_factors[0]).astype(int)
-    df_mito = df[df["class"]==0]
-    df_mito = _add_centroids(df_mito)
-    df_mito["nn"] = df_mito.groupby("t").apply(_nearest_neigbour).values
-    df["nn"] = 99999.
-    df.loc[df["class"]==0,"nn"] = df_mito["nn"]
-    df["class-tmp"] = df["class"].copy()
-    df["class"] = 1
-    df.loc[df["nn"]<(50*max(*yx_scale_factors)),"class"] = 0
+    # df_mito = df[df["class"]==0]
+    # df_mito = _add_centroids(df_mito)
+    # df_mito["nn"] = df_mito.groupby("t").apply(_nearest_neigbour).values
+    # df["nn"] = 99999.
+    # df.loc[df["class"]==0,"nn"] = df_mito["nn"]
+    # df["class-tmp"] = df["class"].copy()
+    # df["class"] = 1
+    # df.loc[df["nn"]<(50*max(*yx_scale_factors)),"class"] = 0
     df = tyx_pandas_post_process(df,threshold_overlap=0.3)
-    df["class"] = df[["class","class-tmp"]].min(axis=1)   
+    # df["class"] = df[["class","class-tmp"]].min(axis=1)
+    print(df[df["mito-id"]>0])
     return _pandas_to_layer(df,4)
 
 
@@ -168,3 +170,4 @@ def max_intensity_projection(img_layer:napari.layers.Image):
 
 
 
+ 
