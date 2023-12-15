@@ -11,12 +11,17 @@ from scipy.spatial.distance import cdist
 _model = None
 def _load_model():
     import torch
-    from torch.hub import load
     global _model
-    assert Path(importlib_resources.files("napari_yolo5_mitosis_detector") / ".models" / "Yolo5" / "mito-nuclei-detection"/ "weights" / "best.pt").exists()
-    _model = load('ultralytics/yolov5', 'custom', path=importlib_resources.files("napari_yolo5_mitosis_detector") / ".models" / "Yolo5" / "mito-nuclei-detection"/ "weights" / "best.pt",force_reload=False)
-    if torch.cuda.is_available():
-        _model = _model.to(torch.device("cuda"))
+    device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+    import sys
+    sys.path.append(str(importlib_resources.files("napari_yolo5_mitosis_detector") / "_models" / "Yolo5"))
+    from napari_yolo5_mitosis_detector._models.Yolo5.models.common import AutoShape
+    from napari_yolo5_mitosis_detector._models.Yolo5.models.experimental import attempt_load
+    model = attempt_load(
+    importlib_resources.files("napari_yolo5_mitosis_detector") / "_models" / "Yolo5" / "mito-nuclei-detection"/ "weights" / "best.pt",
+    device=device, fuse=True)
+    _model = AutoShape(model)
+    sys.path.remove(str(importlib_resources.files("napari_yolo5_mitosis_detector") / "_models" / "Yolo5"))
 loader = threading.Thread(target=_load_model)
 loader.start()
 
@@ -164,7 +169,6 @@ def max_intensity_projection(img_layer:napari.layers.Image):
     projection.name = img_layer.name+"_zprojection"
 
     return projection
-
 
 
 
