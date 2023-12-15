@@ -5,9 +5,7 @@ from napari_yolo5_mitosis_detector._widget import (
     ExampleQWidget,
     ImageThreshold,
     threshold_autogenerate_widget,
-    threshold_magic_widget,
-    yolo5_bbox_mitosis_widget,
-    max_projection_widget
+    MitosisYolov5Widget
 )
 
 
@@ -53,52 +51,18 @@ def test_image_threshold_widget(make_napari_viewer):
 
 
 # capsys is a pytest fixture that captures stdout and stderr output streams
-def test_example_q_widget(make_napari_viewer, capsys):
+def test_NY5MD_widget(make_napari_viewer, capsys):
     # make viewer and add an image layer using our fixture
     viewer = make_napari_viewer()
-    viewer.add_image(np.random.random((100, 100)))
-
+    viewer.add_image(get_image_sample(),name="sample")
     # create our widget, passing in the viewer
-    my_widget = ExampleQWidget(viewer)
+    my_widget = MitosisYolov5Widget(viewer)
 
-    # call our widget method
-    my_widget._on_click()
-
+    viewer.layers.select_all()
+    my_widget._on_click_maxproj()
+    assert "sample_zprojection" in viewer.layers
+    viewer.layers.remove("sample_zprojection")
+    viewer.layers.select_all()
+    my_widget._on_click_mitose2()
+    assert "sample_mitosis-bbox" in viewer.layers
     # read captured output and check that it's as we expected
-    captured = capsys.readouterr()
-    assert captured.out == "napari has 1 layers\n"
-
-
-def test_empty_yolo5_bbox_2d_mitosis_widget():
-    # because our "widget" is a pure function, we can call it and
-    # test it independently of napari
-    im_data = napari.layers.Image(get_image_sample(ndim = 2))
-    empty_bbox_layer = yolo5_bbox_mitosis_widget(im_data)
-    assert empty_bbox_layer.ndim == 2
-
-def test_empty_yolo5_bbox_3d_mitosis_widget():
-    # because our "widget" is a pure function, we can call it and
-    # test it independently of napari
-    im_data =  napari.layers.Image(get_image_sample(ndim = 3))
-    empty_bbox_layer = yolo5_bbox_mitosis_widget(im_data)
-    assert empty_bbox_layer.ndim == 3
-
-def test_empty_yolo5_bbox_4d_mitosis_widget():
-    im_data =  napari.layers.Image(get_image_sample(ndim = 4))
-    empty_bbox_layer = yolo5_bbox_mitosis_widget(im_data)
-    assert empty_bbox_layer.ndim == 4
-
-
-def test_maxproj_widget():
-    # because our "widget" is a pure function, we can call it and
-    # test it independently of napari
-    im_data =  napari.layers.Image(get_image_sample(ndim = 3))
-    proj_layer = max_projection_widget(im_data)
-    assert proj_layer.ndim == 3
-    assert proj_layer.data.shape[0]==1
-
-def test_maxproj_4d_mitosis_widget():
-    im_data =  napari.layers.Image(get_image_sample(ndim = 4))
-    proj_layer = max_projection_widget(im_data)
-    assert proj_layer.ndim == 4
-    assert proj_layer.data.shape[1]==1
