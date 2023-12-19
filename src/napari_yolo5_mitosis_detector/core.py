@@ -54,7 +54,7 @@ def _zyx_to_pandas(im):
     return df
 
 def _pandas_to_layer(df:pd.DataFrame,ndim=2):
-    lay1, lay2 =  napari.layers.Shapes(ndim=ndim), napari.layers.Shapes(ndim=ndim)
+    lay1, lay2 =  napari.layers.Shapes(ndim=ndim, name = "mitosis-bbox"), napari.layers.Shapes(ndim=ndim, name = "nuclei-bbox")
     rectangle_data_mito = np.array([row_to_rect(row,ndim) for _,row in df.iterrows() if row["class"]==0])
     rectangle_data_nuc = np.array([row_to_rect(row,ndim)for _,row in df.iterrows() if row["class"]==1])
     if len(rectangle_data_mito>0 ):
@@ -109,7 +109,8 @@ def _tzyx_monolayer_resized_to_rectangle(im:np.ndarray):
     df["xmax"],df["xmin"] = (df["xmax"]*yx_scale_factors[1]).astype(int),(df["xmin"]*yx_scale_factors[1]).astype(int)
     df["ymax"],df["ymin"] = (df["ymax"]*yx_scale_factors[0]).astype(int),(df["ymin"]*yx_scale_factors[0]).astype(int)
     df = tyx_pandas_post_process(df,threshold_overlap=0.3)
-    return _pandas_to_layer(df,4)
+    layers =  _pandas_to_layer(df,4)
+    return layers
 
 
 def yolo5_bbox_mitosis(img_layer:napari.layers.Image, monolayer=False):
@@ -135,7 +136,7 @@ def yolo5_bbox_mitosis(img_layer:napari.layers.Image, monolayer=False):
     for i, lay in enumerate(detection_shape_layers):
         lay.scale = scale
         lay.translate = translate
-        lay.name = img_layer.name+("_mitosis-bbox" if i==0 else "_nuc-bbox")
+        lay.name = "%s_%s"%(img_layer.name, lay.name)
     return detection_shape_layers
 
 def max_intensity_projection(img_layer:napari.layers.Image):
