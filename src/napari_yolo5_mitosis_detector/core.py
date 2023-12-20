@@ -61,7 +61,15 @@ def _pandas_to_layer(df:pd.DataFrame,ndim=2):
         lay1.add_rectangles((rectangle_data_mito),edge_width=4, edge_color="green", face_color="#ffffff32", z_index=2)    
     if len(rectangle_data_nuc>0 ):
         lay2.add_rectangles((rectangle_data_nuc),edge_width=2, edge_color="red", face_color="#ffffff32", z_index=1)
-    return lay1,lay2
+    return [lay1,lay2]
+
+def _pandas_to_track(df:pd.DataFrame):
+    for el in ["track-id","t","z"]:
+        assert el in df.columns
+    df = _add_centroids(df).reset_index()[["track-id","t","z","y","x"]]
+    df = df.sort_values(["track-id","t"])
+    tracks = napari.layers.Tracks(df.values, name="tracks")
+    return tracks
 
 def _add_centroids(df:pd.DataFrame):
     df.loc[:,"x"] = (df["xmin"]+(df["xmax"]-df["xmin"])/2).copy().astype(int)
@@ -110,6 +118,7 @@ def _tzyx_monolayer_resized_to_rectangle(im:np.ndarray):
     df["ymax"],df["ymin"] = (df["ymax"]*yx_scale_factors[0]).astype(int),(df["ymin"]*yx_scale_factors[0]).astype(int)
     df = tyx_pandas_post_process(df,threshold_overlap=0.3)
     layers =  _pandas_to_layer(df,4)
+    layers.append(_pandas_to_track(df))
     return layers
 
 
@@ -137,7 +146,7 @@ def yolo5_bbox_mitosis(img_layer:napari.layers.Image, monolayer=False):
         lay.scale = scale
         lay.translate = translate
         lay.name = "%s_%s"%(img_layer.name, lay.name)
-    return detection_shape_layers
+    return tuple(detection_shape_layers)
 
 def max_intensity_projection(img_layer:napari.layers.Image):
     img = img_layer.data

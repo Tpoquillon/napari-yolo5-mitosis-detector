@@ -74,9 +74,9 @@ def _add_layer_ids(df:pd.DataFrame, index_col = "z"):
 
 def _expand_mitosis_detections(df:pd.DataFrame,G_filtered:nx.Graph):
     components = list(nx.connected_components(G_filtered.to_undirected()))
-    df.loc[:,"tree-id"] = -1
+    
     for c , comp in enumerate(components):
-        df.loc[list(comp),"tree-id"] = c+1
+        df.loc[list(comp),"track-id"] = c+1
         sub = df.loc[list(comp),"class"].sort_index()
         list_mito_comp = list(sub[sub==0].index)
         subgraph = G_filtered.subgraph(comp)
@@ -87,6 +87,31 @@ def _expand_mitosis_detections(df:pd.DataFrame,G_filtered:nx.Graph):
         df.loc[list(nodlist),"class"] = 0
     return df
 
+def _make_linear(G_filtered:nx.Graph):
+    filter_edges = []
+    filtered_nodes = [node for node, degree in G_filtered.out_degree() if degree > 1]
+    for node in filtered_nodes:
+        edges = G_filtered.out_edges(node, "overlap",default=0)
+        ovmax = max([el[2] for el in edges])
+        filter_edges+=[el[:2] for el in edges if el[2]<ovmax]
+    filtered_nodes = [node for node, degree in G_filtered.in_degree() if degree > 1]
+    for node in filtered_nodes:
+        edges = G_filtered.in_edges(node, "overlap",default=0)
+        ovmax = max([el[2] for el in edges])
+        filter_edges+=[el[:2] for el in edges if el[2]<ovmax]
+    G_linear = G_filtered.copy()
+    G_linear.remove_edges_from(filter_edges)
+    return G_linear
+
+def _add_track_ids(df:pd.DataFrame, G_filtered:nx.Graph):
+    df.loc[:,"track-id"] = -1
+    G_linear = _make_linear(G_filtered)
+    components = list(nx.connected_components(G_linear.to_undirected()))    
+    for c , comp in enumerate(components):
+        df.loc[list(comp),"track-id"] = c+1
+    return df
+
+        
 def _get_mitosis_event_id(df:pd.DataFrame,G_filtered:nx.Graph):
     df["mito-id"]=-1
     list_mito = list(df[df["class"]==0].index)
@@ -106,6 +131,7 @@ def tyx_pandas_post_process(df:pd.DataFrame,**kwargs):
     G_filtered = _filter_overlaping_graph(G, **kwargs)
     df = _expand_mitosis_detections(df, G_filtered)
     df = _get_mitosis_event_id(df, G_filtered)
+    df = _add_track_ids(df, G_filtered)
     return df.reset_index()
 
 
