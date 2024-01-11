@@ -9,13 +9,20 @@ def test_load_model():
     core._model_loaded()
     assert core._model is not None
 
-@pytest.mark.parametrize("ndim,monolayer",[(2,False),(3,False),(4,False),(4,True)])
-def test_yolo5_bbox_ndim(ndim,monolayer):
+@pytest.mark.parametrize("ndim,monolayer,return_surface",[(2,False,False),(3,False,False),(3,False,True),(4,False,False),(4,True,False)])
+def test_yolo5_bbox_ndim(ndim,monolayer,return_surface):
     im_data = core.napari.layers.Image(get_image_sample(ndim))
-    outputs = core.yolo5_bbox_mitosis(im_data,monolayer)
+    outputs = core.yolo5_bbox_mitosis(im_data,monolayer,return_surface)
     for i,layer in enumerate(outputs):
-        assert type(layer) is (core.napari.layers.Tracks  if i==2 else core.napari.layers.Shapes)
-        assert layer.name == ("%s_mitosis-bbox"%im_data.name if i==0 else "%s_nuclei-bbox"%im_data.name if i==1 else "%s_tracks"%im_data.name)
+        if i<2:
+            assert type(layer) is core.napari.layers.Shapes
+            assert layer.name == "%s_%s-bbox"%(im_data.name,"mitosis" if i%2==0 else "nuclei")
+        elif return_surface and i<4:
+            assert type(layer) is core.napari.layers.Surface
+            assert layer.name == "%s_%s-3dbox"%(im_data.name,"mitosis" if i%2==0 else "nuclei")
+        else:
+            assert type(layer) is core.napari.layers.Tracks
+            assert layer.name == "%s_tracks"%im_data.name
         assert (layer.scale==im_data.scale)[-2:].all()
         assert (layer.translate==im_data.translate)[-2:].all()
 @pytest.mark.parametrize("ndim",[3,4])

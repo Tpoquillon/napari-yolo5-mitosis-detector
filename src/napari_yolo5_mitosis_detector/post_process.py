@@ -23,6 +23,17 @@ def row_to_rect(row:pd.Series, ndim:int):
     else:
         raise Exception("ndim must be 2, 3 or 4, not %d"%ndim)
 
+
+cube_mesh = np.asarray([[0,1,2],[0,1,4],[0,2,4],[3,2,7],[3,1,7],[3,1,2],[6,2,4],[6,2,7],[6,7,4],[5,1,7],[5,1,4],[5,4,7]])
+
+def _row_to_cube_mesh(row, ndim):
+    if ndim ==3:
+        return np.asarray([[z, y, x] for z in [row.zmin,row.zmax] for y in [row.ymin,row.ymax] for x in [row.xmin,row.xmax]]),cube_mesh
+    elif ndim ==4:
+        return np.asarray([[row.t, z, y, x] for z in [row.zmin,row.zmax] for y in [row.ymin,row.ymax] for x in [row.xmin,row.xmax]]),cube_mesh
+    else:
+        raise Exception("ndim must be 3 or 4, not %d"%ndim)
+
 def _build_overlapping_graph(rectangle_layers: List[List[np.ndarray]]):
     G = nx.DiGraph()
     polygon_layer = [[Polygon(el)for el in layer] for layer in rectangle_layers]
