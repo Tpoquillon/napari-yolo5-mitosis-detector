@@ -124,7 +124,7 @@ def _yx_to_rectangle(im:np.ndarray):
 def _zyx_to_rectangle(im:np.ndarray, add_cube_surface = False):
     assert len(im.shape)==3 , 'img should have 3 dimention'
     df = _zyx_to_pandas(im)
-    df = zyx_pandas_post_process(df,threshold_overlap=0.5)
+    df = zyx_pandas_post_process(df,threshold_overlap=0.8)
     layers =  _pandas_to_layer(df,3)
     if add_cube_surface: 
         layers+= _pandas_to_surface_layer(df,3)
