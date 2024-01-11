@@ -1,6 +1,7 @@
 
 
 import networkx as nx
+import  shapely  
 from shapely.geometry import Polygon
 from shapely.ops import unary_union
 from typing import List
@@ -34,22 +35,19 @@ def _row_to_cube_mesh(row, ndim):
     else:
         raise Exception("ndim must be 3 or 4, not %d"%ndim)
 
-def _build_overlapping_graph(rectangle_layers: List[List[np.ndarray]]):
+def _build_layer_to_layer_graph(objects_layers: List[List[object]], weighting:dict = {"distance":shapely.distance ,"overlap":_overlap_ratio}):
     G = nx.DiGraph()
-    polygon_layer = [[Polygon(el)for el in layer] for layer in rectangle_layers]
-    for l in range(0,len(polygon_layer)-1):
-        for i, rect1 in enumerate(polygon_layer[l]):
-            for j, rect2 in enumerate(polygon_layer[l+1]):
-                d = rect1.distance(rect2)
-                o = _overlap_ratio(rect1,rect2)
-                G.add_edge((l,i), (l+1,j),**{"distance": d,"overlap":o})
+    for l in range(0,len(objects_layers)-1):
+        for i, rect1 in enumerate(objects_layers[l]):
+            for j, rect2 in enumerate(objects_layers[l+1]):
+                weights = {key:weight(rect1,rect2) for key,weight in weighting.items()}
+                G.add_edge((l,i), (l+1,j),**weights)
     return G    
 
-def _get_large_duplicat(rectangle_layers: List[List[np.ndarray]]):
-    polygon_layer = [[Polygon(el)for el in layer] for layer in rectangle_layers]
+def _get_intra_layer_duplicat(polygons_layers: List[List[Polygon]]):
     overlapping =[]
-    for l in range(0,len(polygon_layer)):
-        lay = polygon_layer[l]
+    for l in range(0,len(polygons_layers)):
+        lay = polygons_layers[l]
         for i in range(len(lay)):
             rect1 = lay[i]
             for j in range(i+1,len(lay)):
@@ -64,15 +62,6 @@ def _filter_overlaping_graph(G:nx.Graph,threshold_overlap:float=-1., threshold_d
     if threshold_distance>=0 and threshold_overlap<=0:
         G_filtered = nx.subgraph_view(G_filtered,filter_edge = lambda X,Y:G[X][Y]["d"]<threshold_distance)
     return G_filtered
-
-def _find_overlapping_rectangles(rectangle_layers: List[List[np.ndarray]], threshold_overlap:float=-1., threshold_distance:float=-1.):
-    # Build graph
-    G = _build_overlapping_graph(rectangle_layers)
-    # Find connected components    
-    G_filtered = _filter_overlaping_graph(G, threshold_overlap,threshold_distance)
-    components = list(nx.connected_components(G_filtered.to_undirected()))
-
-    return components
 
 
 def _add_layer_ids(df:pd.DataFrame, index_col = "z"):
@@ -144,9 +133,9 @@ def _get_mitosis_event_id(df:pd.DataFrame,G_filtered:nx.Graph):
 
 def tyx_pandas_post_process(df:pd.DataFrame,**kwargs):
     df = _add_layer_ids(df,"t").sort_index()
-    rectangle_layers = [[ row_to_rect(row,2)  for _,row in df.loc[t:t].iterrows()] for t in range(int(df.index.levels[0].max()+1))]
-    G = _build_overlapping_graph(rectangle_layers)
-    to_drop = _get_large_duplicat(rectangle_layers)
+    rectangle_layers = [[ Polygon(row_to_rect(row,2))  for _,row in df.loc[t:t].iterrows()] for t in range(int(df.index.levels[0].max()+1))]
+    G = _build_layer_to_layer_graph(rectangle_layers)
+    to_drop = _get_intra_layer_duplicat(rectangle_layers)
     G.remove_nodes_from(to_drop)
     df = df.drop( to_drop)
     G_filtered = _filter_overlaping_graph(G, **kwargs)
@@ -158,9 +147,9 @@ def tyx_pandas_post_process(df:pd.DataFrame,**kwargs):
 
 def zyx_pandas_post_process(df:pd.DataFrame,**kwargs):
     df = _add_layer_ids(df, "z").sort_index()
-    rectangle_layers = [[ row_to_rect(row,2)  for _,row in df.loc[z:z].iterrows()] for z in range(int(df.index.levels[0].max()+1))]
-    G = _build_overlapping_graph(rectangle_layers)
-    to_drop = _get_large_duplicat(rectangle_layers)
+    rectangle_layers = [[ Polygon(row_to_rect(row,2))  for _,row in df.loc[z:z].iterrows()] for z in range(int(df.index.levels[0].max()+1))]
+    G = _build_layer_to_layer_graph(rectangle_layers)
+    to_drop = _get_intra_layer_duplicat(rectangle_layers)
     G.remove_nodes_from(to_drop)
     df = df.drop( to_drop)
     G_filtered = _filter_overlaping_graph(G, **kwargs)
