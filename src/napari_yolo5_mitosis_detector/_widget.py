@@ -32,7 +32,7 @@ from typing import TYPE_CHECKING
 
 from magicgui import magic_factory
 from magicgui.widgets import CheckBox, Container, create_widget
-from qtpy.QtWidgets import QHBoxLayout,QVBoxLayout, QPushButton, QWidget
+from qtpy.QtWidgets import QHBoxLayout,QVBoxLayout, QPushButton, QWidget, QCheckBox
 from skimage.util import img_as_float
 from .core import yolo5_bbox_mitosis, max_intensity_projection
 if TYPE_CHECKING:
@@ -155,7 +155,10 @@ class MitosisYolov5Widget(QWidget):
         
         btn_mitose2 = QPushButton("Mitosis Monolayer Detection")
         btn_mitose2.clicked.connect(self._on_click_mitose2)
-        self.layout().addWidget(btn_mitose2)  
+        self.layout().addWidget(btn_mitose2)
+
+        self.checkout_surface = QCheckBox("Return Surfaces",self)
+        self.layout().addWidget(self.checkout_surface)
         
     def _selection_io_wraper(self,func,*args,**kwargs):
         imput = list(self.viewer.layers.selection)[0]
@@ -168,6 +171,6 @@ class MitosisYolov5Widget(QWidget):
     def _on_click_maxproj(self):
         self._selection_io_wraper(max_intensity_projection)
     def _on_click_mitose(self):
-        self._selection_io_wraper(yolo5_bbox_mitosis)
+        self._selection_io_wraper(yolo5_bbox_mitosis,return_surface=self.checkout_surface.isChecked())
     def _on_click_mitose2(self):
         self._selection_io_wraper(yolo5_bbox_mitosis,monolayer=True)
