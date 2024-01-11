@@ -21,7 +21,7 @@ def row_to_rect(row:pd.Series, ndim:int):
     elif ndim ==4:
         return [[row.t, row.z,row.ymin,row.xmin],[row.t, row.z,row.ymin,row.xmax],[row.t, row.z,row.ymax,row.xmax],[row.t, row.z,row.ymax,row.xmin]]
     else:
-        raise Exception("ndim must be 2 or 3, not %d"%ndim)
+        raise Exception("ndim must be 2, 3 or 4, not %d"%ndim)
 
 def _build_overlapping_graph(rectangle_layers: List[List[np.ndarray]]):
     G = nx.DiGraph()
@@ -103,6 +103,16 @@ def _make_linear(G_filtered:nx.Graph):
     G_linear.remove_edges_from(filter_edges)
     return G_linear
 
+
+def _add_volume_ids(df:pd.DataFrame, G_filtered:nx.Graph):
+    components = list(nx.connected_components(G_filtered.to_undirected()))
+    df.loc[:,"volume-id"] = -1
+    for c , comp in enumerate(components):
+        df.loc[list(comp),"volume-id"] = c+1
+        df.loc[list(comp),"class"] = np.round(np.mean(df.loc[list(comp),"class"])**2)
+    return df
+        
+
 def _add_track_ids(df:pd.DataFrame, G_filtered:nx.Graph):
     df.loc[:,"track-id"] = -1
     G_linear = _make_linear(G_filtered)
@@ -136,10 +146,12 @@ def tyx_pandas_post_process(df:pd.DataFrame,**kwargs):
 
 
 def zyx_pandas_post_process(df:pd.DataFrame,**kwargs):
-    df = _add_layer_ids(df).sort_index()
+    df = _add_layer_ids(df, "z").sort_index()
     rectangle_layers = [[ row_to_rect(row,2)  for _,row in df.loc[z:z].iterrows()] for z in range(int(df.index.levels[0].max()+1))]
-    components = _find_overlapping_rectangles(rectangle_layers,**kwargs)
-    for c , comp in enumerate(components):
-        df.loc[list(comp),"class"] = np.round(np.mean(df.loc[list(comp),"class"])**2)
-    return df.reset_index()
+    G = _build_overlapping_graph(rectangle_layers)
+    to_drop = _get_large_duplicat(rectangle_layers)
+    G.remove_nodes_from(to_drop)
+    df = df.drop( to_drop)
+    G_filtered = _filter_overlaping_graph(G, **kwargs)
+    return _add_volume_ids(df, G_filtered).reset_index()
     
